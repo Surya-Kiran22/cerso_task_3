@@ -13,7 +13,9 @@ services:
     plan: free
     region: singapore
 
-    buildCommand: npm ci && npm run build
+    # --include=dev is required: Render sets NODE_ENV=production, which makes a
+    # plain `npm ci` skip devDependencies and leave out the TypeScript compiler.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
 
     # Render hits this after each deploy; /health returns 503 if MongoDB is down.
