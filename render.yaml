@@ -1,0 +1,42 @@
+# Render blueprint: https://render.com/docs/blueprint-spec
+#
+# Deploy with:  render blueprint launch
+#   (or push this repo to GitHub and hit "New +" > "Blueprint" in Render)
+#
+# NOTE: set MONGODB_URI to your own Atlas string when prompted (sync: false),
+# or paste it into the Render dashboard under Environment.
+
+services:
+  - type: web
+    name: task-management-api
+    runtime: node
+    plan: free
+    region: singapore
+
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+
+    # Render hits this after each deploy; /health returns 503 if MongoDB is down.
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Render injects PORT automatically - do not set it here.
+
+      - key: API_PREFIX
+        value: /api/v1
+
+      - key: MONGODB_DB_NAME
+        value: cesro_task_3
+
+      # Enter this in the Render dashboard, it is marked secret.
+      - key: MONGODB_URI
+        sync: false
+
+      - key: CORS_ORIGIN
+        value: "*"
+
+      - key: LOG_FORMAT
+        value: combined

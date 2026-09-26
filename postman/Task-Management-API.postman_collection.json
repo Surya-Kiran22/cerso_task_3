@@ -1,0 +1,351 @@
+{
+  "info": {
+    "name": "Task Management API",
+    "_postman_id": "b7f3c2a1-5d64-4e29-9f0b-1a2c3d4e5f60",
+    "description": "REST API for managing tasks (Node.js + Express + TypeScript + MongoDB).\n\nHow to use:\n1. Start the server: `npm run dev`\n2. Import this collection into Postman.\n3. Run the requests in order - `Create Task` stores the new id in the `taskId` collection variable, which the other requests reuse automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "apiPrefix", "value": "/api/v1" },
+    { "key": "taskId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] },
+            "description": "Liveness + readiness probe. Returns 503 if MongoDB is not connected."
+          }
+        },
+        {
+          "name": "API Index",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}{{apiPrefix}}", "host": ["{{baseUrl}}"], "path": ["{{apiPrefix}}"] },
+            "description": "Lists every available endpoint."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks - Create",
+      "item": [
+        {
+          "name": "Create Task (minimal)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Defaults applied', () => {",
+                  "  pm.expect(body.data.status).to.eql('todo');",
+                  "  pm.expect(body.data.priority).to.eql('medium');",
+                  "});",
+                  "pm.collectionVariables.set('taskId', body.data._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Prepare quarterly report\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}{{apiPrefix}}/tasks", "host": ["{{baseUrl}}"], "path": ["{{apiPrefix}}", "tasks"] },
+            "description": "Creates a task with only the required `title`. Saves the new id into the `taskId` variable."
+          }
+        },
+        {
+          "name": "Create Task (full)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Tags are lower-cased and de-duplicated', () => {",
+                  "  pm.expect(body.data.tags).to.eql(['release', 'ops']);",
+                  "});",
+                  "pm.collectionVariables.set('taskId', body.data._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Ship the release\",\n  \"description\": \"Tag, build, publish and announce.\",\n  \"status\": \"in_progress\",\n  \"priority\": \"high\",\n  \"dueDate\": \"2030-12-31T17:00:00.000Z\",\n  \"tags\": [\"Release\", \"release\", \"Ops\"]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}{{apiPrefix}}/tasks", "host": ["{{baseUrl}}"], "path": ["{{apiPrefix}}", "tasks"] },
+            "description": "Creates a task using every supported field."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks - Read",
+      "item": [
+        {
+          "name": "List All Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}{{apiPrefix}}/tasks", "host": ["{{baseUrl}}"], "path": ["{{apiPrefix}}", "tasks"] },
+            "description": "Returns tasks newest first, with pagination metadata."
+          }
+        },
+        {
+          "name": "List Tasks (filtered + paginated)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/tasks?status=in_progress&priority=high&search=ship&page=1&limit=5&sortBy=createdAt&sortOrder=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "tasks"],
+              "query": [
+                { "key": "status", "value": "in_progress", "description": "todo | in_progress | done" },
+                { "key": "priority", "value": "high", "description": "low | medium | high" },
+                { "key": "search", "value": "ship", "description": "Case-insensitive match on title, description and tags" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "5", "description": "Max 100" },
+                { "key": "sortBy", "value": "createdAt" },
+                { "key": "sortOrder", "value": "desc" }
+              ]
+            },
+            "description": "Demonstrates every supported query parameter."
+          }
+        },
+        {
+          "name": "Get Task By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "tasks", "{{taskId}}"]
+            },
+            "description": "Returns a single task. 404 if the id does not exist."
+          }
+        },
+        {
+          "name": "Get Task Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}{{apiPrefix}}/tasks/stats", "host": ["{{baseUrl}}"], "path": ["{{apiPrefix}}", "tasks", "stats"] },
+            "description": "Counts of tasks grouped by status and by priority."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks - Update",
+      "item": [
+        {
+          "name": "Update Task (PATCH)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('completedAt is stamped when status becomes done', () => {",
+                  "  pm.expect(body.data.status).to.eql('done');",
+                  "  pm.expect(body.data.completedAt).to.not.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"done\",\n  \"priority\": \"low\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "tasks", "{{taskId}}"]
+            },
+            "description": "Partial update. Only the supplied fields change. Send `\"dueDate\": null` to clear the deadline."
+          }
+        },
+        {
+          "name": "Replace Task (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Renamed via PUT\",\n  \"tags\": [\"renamed\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "tasks", "{{taskId}}"]
+            },
+            "description": "Same validation rules as PATCH."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks - Delete",
+      "item": [
+        {
+          "name": "Delete Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status code is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "tasks", "{{taskId}}"]
+            },
+            "description": "Deletes the task and returns the removed document. Running it twice returns 404."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Cases",
+      "item": [
+        {
+          "name": "Validation - Missing Title (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 422', () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error envelope is used', () => {",
+                  "  pm.expect(body.success).to.eql(false);",
+                  "  pm.expect(body.error.code).to.eql('VALIDATION_ERROR');",
+                  "  pm.expect(body.error.details[0].field).to.eql('title');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"No title provided\"\n}" },
+            "url": { "raw": "{{baseUrl}}{{apiPrefix}}/tasks", "host": ["{{baseUrl}}"], "path": ["{{apiPrefix}}", "tasks"] },
+            "description": "`title` is required and must be 3-120 characters."
+          }
+        },
+        {
+          "name": "Validation - Bad Enum Value (422)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Invalid status\",\n  \"status\": \"archived\"\n}" },
+            "url": { "raw": "{{baseUrl}}{{apiPrefix}}/tasks", "host": ["{{baseUrl}}"], "path": ["{{apiPrefix}}", "tasks"] },
+            "description": "`status` must be one of todo / in_progress / done."
+          }
+        },
+        {
+          "name": "Validation - Unknown Field (422)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Extra field\",\n  \"isAdmin\": true\n}" },
+            "url": { "raw": "{{baseUrl}}{{apiPrefix}}/tasks", "host": ["{{baseUrl}}"], "path": ["{{apiPrefix}}", "tasks"] },
+            "description": "The request body schema is strict, so unrecognised fields are rejected."
+          }
+        },
+        {
+          "name": "Not Found - Unknown Task (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error code is TASK_NOT_FOUND', () => pm.expect(pm.response.json().error.code).to.eql('TASK_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/tasks/64b7f9c2e13a4b5c6d7e8f90",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "tasks", "64b7f9c2e13a4b5c6d7e8f90"]
+            },
+            "description": "A well-formed ObjectId that is not in the database."
+          }
+        },
+        {
+          "name": "Validation - Malformed Id (422)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/tasks/not-an-object-id",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "tasks", "not-an-object-id"]
+            },
+            "description": "Ids must be 24 character hex strings."
+          }
+        },
+        {
+          "name": "Not Found - Unknown Route (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}{{apiPrefix}}/does-not-exist", "host": ["{{baseUrl}}"], "path": ["{{apiPrefix}}", "does-not-exist"] },
+            "description": "Unmatched routes return a structured ROUTE_NOT_FOUND error."
+          }
+        },
+        {
+          "name": "Bad Request - Malformed JSON (400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"title\": \"broken\",,}" },
+            "url": { "raw": "{{baseUrl}}{{apiPrefix}}/tasks", "host": ["{{baseUrl}}"], "path": ["{{apiPrefix}}", "tasks"] },
+            "description": "Invalid JSON is rejected with 400 INVALID_JSON instead of crashing the server."
+          }
+        }
+      ]
+    }
+  ]
+}

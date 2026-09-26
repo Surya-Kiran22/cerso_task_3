@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Management API</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #ffffff;
+    color: #222222;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 20px;
+  }
+
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h2 { font-size: 16px; margin-bottom: 12px; }
+
+  .sub { color: #666; margin-bottom: 20px; }
+
+  .box {
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 20px;
+    background: #ffffff;
+  }
+
+  .row { display: flex; flex-wrap: wrap; gap: 12px; }
+  .row > div { flex: 1 1 200px; }
+
+  label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: bold;
+    font-size: 13px;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    padding: 7px 8px;
+    border: 1px solid #b8b8b8;
+    border-radius: 3px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #ffffff;
+    color: #222222;
+  }
+
+  textarea { height: 60px; resize: vertical; }
+
+  input:focus, select:focus, textarea:focus {
+    outline: 2px solid #0066cc;
+    outline-offset: -1px;
+    border-color: #0066cc;
+  }
+
+  .field { margin-bottom: 12px; }
+  .hint { color: #777; font-size: 12px; margin-top: 3px; }
+
+  button {
+    padding: 7px 14px;
+    border: 1px solid #b8b8b8;
+    border-radius: 3px;
+    background: #f5f5f5;
+    color: #222;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  button:hover { background: #e8e8e8; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+
+  .btn-primary { background: #0066cc; border-color: #0066cc; color: #fff; }
+  .btn-primary:hover { background: #0055aa; }
+  .btn-danger { background: #cc0000; border-color: #cc0000; color: #fff; }
+  .btn-danger:hover { background: #aa0000; }
+  .btn-ok { background: #00802b; border-color: #00802b; color: #fff; }
+  .btn-ok:hover { background: #006a22; }
+
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th, td {
+    border: 1px solid #d0d0d0;
+    padding: 6px 8px;
+    text-align: left;
+    vertical-align: top;
+    font-size: 13px;
+  }
+  th { background: #f0f0f0; font-weight: bold; }
+
+  .tag {
+    display: inline-block;
+    padding: 1px 6px;
+    margin: 1px 2px 1px 0;
+    border: 1px solid #b8b8b8;
+    border-radius: 3px;
+    background: #f0f0f0;
+    font-size: 12px;
+  }
+
+  .tag-red { background: #ffe0e0; border-color: #cc0000; color: #900; }
+  .tag-green { background: #e0f5e8; border-color: #00802b; color: #060; }
+  .tag-orange { background: #fff2e0; border-color: #d08000; color: #803; }
+
+  pre {
+    background: #f7f7f7;
+    border: 1px solid #d0d0d0;
+    border-radius: 3px;
+    padding: 10px;
+    overflow: auto;
+    max-height: 260px;
+    font-size: 12px;
+    font-family: Consolas, Monaco, monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  #toasts {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    width: 320px;
+    z-index: 999;
+  }
+
+  .toast {
+    border: 1px solid #999;
+    border-left-width: 5px;
+    border-radius: 3px;
+    background: #ffffff;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .toast.ok { border-left-color: #00802b; }
+  .toast.err { border-left-color: #cc0000; }
+  .toast.warn { border-left-color: #d08000; }
+  .toast b { display: block; margin-bottom: 3px; }
+  .toast span { color: #555; white-space: pre-wrap; }
+
+  .stats { display: flex; flex-wrap: wrap; gap: 10px; }
+  .stat {
+    border: 1px solid #d0d0d0;
+    border-radius: 3px;
+    padding: 8px 14px;
+    min-width: 110px;
+    background: #fafafa;
+  }
+  .stat b { display: block; font-size: 20px; }
+  .stat small { color: #666; }
+
+  .pager { margin-top: 10px; text-align: right; color: #555; font-size: 13px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<h1>Task Management API</h1>
+<p class="sub">Simple test page for all CRUD operations. Base URL: <code id="baseUrlText"></code></p>
+
+<!-- toasts -->
+<div id="toasts"></div>
+
+<!-- health -->
+<div class="box">
+  <h2>Health &amp; Stats</h2>
+  <div class="btns" style="margin-bottom:12px">
+    <button class="btn-primary" id="btnHealth">Check Health</button>
+    <button id="btnStats">Load Stats</button>
+    <button id="btnReload">Reload List</button>
+  </div>
+  <div id="healthLine" style="margin-bottom:10px"></div>
+  <div class="stats" id="stats"></div>
+</div>
+
+<!-- create / update -->
+<div class="box">
+  <h2 id="formTitle">Create Task</h2>
+  <form id="taskForm">
+    <input type="hidden" id="taskId">
+
+    <div class="field">
+      <label for="title">Title <span style="color:#c00">*</span></label>
+      <input id="title" type="text" placeholder="e.g. Write the report" required>
+      <div class="hint">3 to 120 characters</div>
+    </div>
+
+    <div class="field">
+      <label for="description">Description</label>
+      <textarea id="description" placeholder="Optional"></textarea>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="status">Status</label>
+        <select id="status">
+          <option value="todo">todo</option>
+          <option value="in_progress">in_progress</option>
+          <option value="done">done</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="priority">Priority</label>
+        <select id="priority">
+          <option value="low">low</option>
+          <option value="medium" selected>medium</option>
+          <option value="high">high</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="dueDate">Due Date</label>
+        <input id="dueDate" type="datetime-local" step="1">
+      </div>
+    </div>
+
+    <div class="field hidden" id="clearWrap">
+      <label style="font-weight:normal">
+        <input type="checkbox" id="clearDue" style="width:auto; margin-right:6px">
+        Clear the due date (sets dueDate to null)
+      </label>
+    </div>
+
+    <div class="field">
+      <label for="tags">Tags</label>
+      <input id="tags" type="text" placeholder="comma, separated, tags">
+      <div class="hint">Max 10 tags. Duplicates are removed automatically.</div>
+    </div>
+
+    <div class="btns">
+      <button type="button" id="btnReset">Reset</button>
+      <button type="submit" class="btn-primary" id="btnSave">Create</button>
+    </div>
+  </form>
+</div>
+
+<!-- filters -->
+<div class="box">
+  <h2>Search, Filter &amp; Sort</h2>
+  <div class="row">
+    <div class="field">
+      <label for="fStatus">Status</label>
+      <select id="fStatus">
+        <option value="">All</option>
+        <option value="todo">todo</option>
+        <option value="in_progress">in_progress</option>
+        <option value="done">done</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="fPriority">Priority</label>
+      <select id="fPriority">
+        <option value="">All</option>
+        <option value="low">low</option>
+        <option value="medium">medium</option>
+        <option value="high">high</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="fSearch">Search</label>
+      <input id="fSearch" type="text" placeholder="title, description or tags">
+    </div>
+  </div>
+  <div class="row">
+    <div class="field">
+      <label for="fSortBy">Sort By</label>
+      <select id="fSortBy">
+        <option value="createdAt">createdAt</option>
+        <option value="updatedAt">updatedAt</option>
+        <option value="dueDate">dueDate</option>
+        <option value="priority">priority</option>
+        <option value="status">status</option>
+        <option value="title">title</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="fSortOrder">Order</label>
+      <select id="fSortOrder">
+        <option value="desc">desc</option>
+        <option value="asc">asc</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="fPage">Page</label>
+      <input id="fPage" type="number" min="1" value="1">
+    </div>
+    <div class="field">
+      <label for="fLimit">Per Page</label>
+      <input id="fLimit" type="number" min="1" max="100" value="10">
+    </div>
+  </div>
+  <div class="btns">
+    <button class="btn-primary" id="btnApply">Apply</button>
+    <button id="btnPrev">Previous</button>
+    <button id="btnNext">Next</button>
+    <button id="btnClearFilters">Clear Filters</button>
+  </div>
+</div>
+
+<!-- list -->
+<div class="box">
+  <h2>Tasks</h2>
+  <div style="overflow:auto">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Title</th><th>Description</th><th>Status</th>
+          <th>Priority</th><th>Due Date</th><th>Overdue</th><th>Tags</th>
+          <th>Created</th><th>Updated</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div class="pager" id="pager"></div>
+</div>
+
+<!-- raw -->
+<div class="box">
+  <h2>Last API Response</h2>
+  <div class="btns" style="margin-bottom:8px">
+    <button id="btnClearRaw">Clear</button>
+  </div>
+  <pre id="raw">{}</pre>
+</div>
+
+<script>
+// Works locally (file://) and when served by Render, unless overridden with ?api=
+var API_BASE = (function () {
+  var q = new URLSearchParams(location.search).get('api');
+  if (q) return q.replace(/\/$/, '');
+  if (location.protocol === 'file:') return 'http://localhost:4000/api/v1';
+  return location.origin + '/api/v1';
+})();
+document.getElementById('baseUrlText').textContent = API_BASE;
+
+var $ = function (id) { return document.getElementById(id); };
+
+function toast(kind, title, msg) {
+  var el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  var b = document.createElement('b');
+  b.textContent = title;
+  var s = document.createElement('span');
+  s.textContent = msg || '';
+  el.appendChild(b);
+  el.appendChild(s);
+  $('toasts').appendChild(el);
+  setTimeout(function () { el.remove(); }, 4000);
+}
+
+function esc(v) {
+  if (v === null || v === undefined) return '';
+  return String(v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function fmt(d) {
+  if (!d) return '';
+  var x = new Date(d);
+  if (isNaN(x.getTime())) return d;
+  return x.toLocaleString();
+}
+
+function statusTag(s) {
+  var cls = s === 'done' ? 'tag-green' : s === 'in_progress' ? 'tag-orange' : '';
+  return '<span class="tag ' + cls + '">' + esc(s) + '</span>';
+}
+
+function priorityTag(p) {
+  var cls = p === 'high' ? 'tag-red' : p === 'medium' ? 'tag-orange' : '';
+  return '<span class="tag ' + cls + '">' + esc(p) + '</span>';
+}
+
+function api(path, opts) {
+  opts = opts || {};
+  return fetch(API_BASE + path, {
+    method: opts.method || 'GET',
+    headers: { 'Content-Type': 'application/json' },
+    body: opts.body
+  }).then(function (res) {
+    return res.json().catch(function () { return {}; }).then(function (data) {
+      $('raw').textContent = JSON.stringify(data, null, 2);
+      return { ok: res.ok, status: res.status, data: data };
+    });
+  });
+}
+
+function fail(r, title) {
+  var e = r.data && r.data.error;
+  if (e) {
+    var msg = e.message + (e.code ? ' [' + e.code + ']' : '');
+    if (e.details && e.details.length) {
+      msg += '\n' + e.details.map(function (d) { return '- ' + d.field + ': ' + d.message; }).join('\n');
+    }
+    toast('err', title + ' (' + r.status + ')', msg);
+  } else {
+    toast('err', title + ' (' + r.status + ')', JSON.stringify(r.data));
+  }
+}
+
+/* ---------- health + stats ---------- */
+
+function checkHealth() {
+  return fetch(API_BASE + '/health').then(function (r) { return r.json(); }).then(function (d) {
+    $('raw').textContent = JSON.stringify(d, null, 2);
+    var s = d.data || {};
+    $('healthLine').innerHTML = s.status
+      ? 'Status: <b>' + esc(s.status) + '</b> &nbsp;|&nbsp; Database: <b>' + esc(s.database) +
+        '</b> &nbsp;|&nbsp; Uptime: ' + esc(s.uptime) + 's'
+      : 'Unexpected response';
+    if (d.success) toast('ok', 'Health check passed', 'Database is ' + s.database);
+    else toast('err', 'Health check failed', 'Database is ' + s.database);
+  }).catch(function (e) {
+    $('healthLine').textContent = 'Could not reach the server.';
+    toast('err', 'Health check failed', 'Could not reach ' + API_BASE);
+  });
+}
+
+function loadStats() {
+  return api('/tasks/stats').then(function (r) {
+    if (!r.ok) return fail(r, 'Stats failed');
+    var s = r.data.data, html = '';
+    html += '<div class="stat"><b>' + s.total + '</b><small>Total</small></div>';
+    Object.keys(s.byStatus || {}).forEach(function (k) {
+      html += '<div class="stat"><b>' + s.byStatus[k] + '</b><small>' + esc(k) + '</small></div>';
+    });
+    Object.keys(s.byPriority || {}).forEach(function (k) {
+      html += '<div class="stat"><b>' + s.byPriority[k] + '</b><small>' + esc(k) + '</small></div>';
+    });
+    $('stats').innerHTML = html;
+    toast('ok', 'Stats loaded', 'Total tasks: ' + s.total);
+  });
+}
+
+/* ---------- list ---------- */
+
+var pageInfo = null;
+
+function query() {
+  var p = new URLSearchParams();
+  if ($('fStatus').value) p.set('status', $('fStatus').value);
+  if ($('fPriority').value) p.set('priority', $('fPriority').value);
+  if ($('fSearch').value.trim()) p.set('search', $('fSearch').value.trim());
+  p.set('sortBy', $('fSortBy').value);
+  p.set('sortOrder', $('fSortOrder').value);
+  p.set('page', $('fPage').value || '1');
+  p.set('limit', $('fLimit').value || '10');
+  return '?' + p.toString();
+}
+
+function render(list, meta) {
+  pageInfo = meta && meta.pagination ? meta.pagination : null;
+  var body = '';
+
+  if (!list.length) {
+    body = '<tr><td colspan="11" style="text-align:center;color:#777;padding:16px">No tasks found.</td></tr>';
+  }
+
+  list.forEach(function (t) {
+    var tags = (t.tags || []).map(function (x) { return '<span class="tag">' + esc(x) + '</span>'; }).join('');
+    body += '<tr>' +
+      '<td style="font-family:Consolas,monospace;font-size:11px">' + esc(t._id) + '</td>' +
+      '<td>' + esc(t.title) + '</td>' +
+      '<td>' + esc(t.description || '') + '</td>' +
+      '<td>' + statusTag(t.status) + '</td>' +
+      '<td>' + priorityTag(t.priority) + '</td>' +
+      '<td>' + esc(fmt(t.dueDate)) + '</td>' +
+      '<td>' + (t.isOverdue ? '<span class="tag tag-red">yes</span>' : '') + '</td>' +
+      '<td>' + tags + '</td>' +
+      '<td>' + esc(fmt(t.createdAt)) + '</td>' +
+      '<td>' + esc(fmt(t.updatedAt)) + '</td>' +
+      '<td style="white-space:nowrap">' +
+        '<button data-edit="' + t._id + '">Edit</button> ' +
+        '<button class="btn-danger" data-del="' + t._id + '">Delete</button>' +
+      '</td>' +
+    '</tr>';
+  });
+
+  $('tbody').innerHTML = body;
+
+  $('pager').textContent = pageInfo
+    ? 'Page ' + pageInfo.page + ' of ' + pageInfo.totalPages +
+      '  |  Per page: ' + pageInfo.limit +
+      '  |  Total: ' + pageInfo.total
+    : list.length + ' result(s)';
+
+  document.querySelectorAll('[data-edit]').forEach(function (b) {
+    b.onclick = function () {
+      var t = list.find(function (x) { return x._id === b.dataset.edit; });
+      if (t) fillForm(t);
+    };
+  });
+
+  document.querySelectorAll('[data-del]').forEach(function (b) {
+    b.onclick = function () {
+      var id = b.dataset.del;
+      if (!confirm('Delete this task?\n' + id)) return;
+      api('/tasks/' + id, { method: 'DELETE' }).then(function (r) {
+        if (!r.ok) return fail(r, 'Delete failed');
+        toast('ok', 'Task deleted', 'Deleted ' + (r.data.data ? r.data.data._id : id));
+        resetForm();
+        loadList();
+        loadStats();
+      });
+    };
+  });
+}
+
+function loadList() {
+  return api('/tasks' + query()).then(function (r) {
+    if (!r.ok) return fail(r, 'Could not load tasks');
+    render(r.data.data, r.data.meta);
+    toast('ok', 'Tasks loaded', (r.data.data || []).length + ' task(s) found');
+  });
+}
+
+/* ---------- create / update ---------- */
+
+function resetForm() {
+  $('taskForm').reset();
+  $('taskId').value = '';
+  $('priority').value = 'medium';
+  $('status').value = 'todo';
+  $('clearWrap').classList.add('hidden');
+  $('clearDue').checked = false;
+  $('formTitle').textContent = 'Create Task';
+  $('btnSave').textContent = 'Create';
+}
+
+function fillForm(t) {
+  $('taskId').value = t._id;
+  $('title').value = t.title || '';
+  $('description').value = t.description || '';
+  $('status').value = t.status || 'todo';
+  $('priority').value = t.priority || 'medium';
+  if (t.dueDate) {
+    var d = new Date(t.dueDate);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    $('dueDate').value = d.toISOString().slice(0, 19);
+  } else {
+    $('dueDate').value = '';
+  }
+  $('tags').value = (t.tags || []).join(', ');
+  $('clearWrap').classList.remove('hidden');
+  $('clearDue').checked = false;
+  $('formTitle').textContent = 'Update Task (id: ' + t._id + ')';
+  $('btnSave').textContent = 'Update';
+  window.scrollTo(0, 0);
+}
+
+$('taskForm').onsubmit = function (ev) {
+  ev.preventDefault();
+
+  var title = $('title').value.trim();
+  if (title.length < 3) return toast('warn', 'Validation failed', 'Title must be at least 3 characters.');
+
+  var p = { title: title };
+  var d = $('description').value.trim();
+  if (d) p.description = d;
+  p.status = $('status').value;
+  p.priority = $('priority').value;
+
+  if ($('clearWrap').classList.contains('hidden') === false && $('clearDue').checked) {
+    p.dueDate = null;
+  } else if ($('dueDate').value) {
+    p.dueDate = new Date($('dueDate').value).toISOString();
+  }
+
+  var tg = $('tags').value.trim();
+  if (tg) p.tags = tg.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+
+  var id = $('taskId').value.trim();
+
+  if (id) {
+    api('/tasks/' + id, { method: 'PATCH', body: JSON.stringify(p) }).then(function (r) {
+      if (!r.ok) return fail(r, 'Update failed');
+      toast('ok', 'Task updated', 'Updated ' + r.data.data._id);
+      loadList();
+      loadStats();
+    });
+  } else {
+    api('/tasks', { method: 'POST', body: JSON.stringify(p) }).then(function (r) {
+      if (!r.ok) return fail(r, 'Create failed');
+      toast('ok', 'Task created', 'Created ' + r.data.data._id);
+      resetForm();
+      loadList();
+      loadStats();
+    });
+  }
+};
+
+/* ---------- wiring ---------- */
+
+$('btnReset').onclick = resetForm;
+$('btnHealth').onclick = checkHealth;
+$('btnStats').onclick = loadStats;
+$('btnReload').onclick = loadList;
+$('btnApply').onclick = function () { $('fPage').value = '1'; loadList(); };
+$('btnPrev').onclick = function () {
+  if (pageInfo && pageInfo.hasPrevPage) { $('fPage').value = pageInfo.page - 1; loadList(); }
+  else toast('warn', 'No previous page', 'You are on the first page.');
+};
+$('btnNext').onclick = function () {
+  if (pageInfo && pageInfo.hasNextPage) { $('fPage').value = pageInfo.page + 1; loadList(); }
+  else toast('warn', 'No next page', 'You are on the last page.');
+};
+$('btnClearFilters').onclick = function () {
+  $('fStatus').value = ''; $('fPriority').value = ''; $('fSearch').value = '';
+  $('fSortBy').value = 'createdAt'; $('fSortOrder').value = 'desc';
+  $('fPage').value = '1'; $('fLimit').value = '10';
+  loadList();
+};
+$('btnClearRaw').onclick = function () { $('raw').textContent = '{}'; };
+
+checkHealth();
+loadStats();
+loadList();
+</script>
+</body>
+</html>
